@@ -1,5 +1,5 @@
 /*
-  firewall.cpp
+  EspFirewall.cpp
   copyright by lutzion.de
 */
 
@@ -7,24 +7,29 @@
 
 EspFirewall::EspFirewall()
 {
-  // default: allow everything
+  // default: allow everything, log nothing
   _ip = 0 ;
   _mask = 0 ;
-  _dbgLvl = 0 ;
+  _logLvl = none ;
 }
 
-void EspFirewall::setDebugLevel(int lvl)
+bool EspFirewall::setLogLevel(LogLvl lvl)
 {
-  _dbgLvl = lvl;
+  _logLvl = lvl;
+  return true ;
+}
+LogLvl EspFirewall::getLogLevel()
+{
+  return _logLvl ;
 }
 
-bool EspFirewall::setCIDR(String cCIDR) 
+bool EspFirewall::setIpRange(String cIPR) 
 {
-  int ip[4] ;
+  int ip[9] ;
   int bits ;
 
   // for ip4 so far
-  sscanf(cCIDR.c_str(), "%d.%d.%d.%d/%d", &ip[0], &ip[1], &ip[2], &ip[3], &bits) ;
+  sscanf(cIPR.c_str(), "%d.%d.%d.%d/%d", &ip[0], &ip[1], &ip[2], &ip[3], &bits) ;
 
   _ip = (ip[0] << 24) + 
         (ip[1] << 16) + 
@@ -32,9 +37,9 @@ bool EspFirewall::setCIDR(String cCIDR)
          ip[3] ;
   _mask = 0xFFFFFFFF << (32 - bits) ;
 
-  if (_dbgLvl > 0)
+  if (_logLvl <= debug)
   {
-    Serial.printf("EspFirewall::setCIDR(%s) -> %08X / %08X\n", cCIDR.c_str(), _ip, _mask);
+    Serial.printf("EspFirewall::setIpRange(%s) -> %08X / %08X\n", cIPR.c_str(), _ip, _mask);
   }
 
   return true ;
@@ -60,7 +65,7 @@ bool EspFirewall::IPisAllowed(IPAddress ip)
 
   ok = ((_ip & _mask) == (ipIn & _mask)) ;
 
-  if (!ok && (_dbgLvl > 0))
+  if (!ok && (_logLvl <= block))
   {
     String sIP = ip.toString();
     Serial.printf("EspFirewall::IPisAllowed(%s) blocked (%08X & %08X != %08X & %08X)\n", 
